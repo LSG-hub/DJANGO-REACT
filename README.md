@@ -1,2 +1,4 @@
 # DJANGO-REACT
-This Repo contains basic DJANGO apps for backend and REACT for frontend. To refer this while building any project in the future
+This Repo contains basic DJANGO apps for backend and REACT for frontend. 
+
+## This Project Contains the user Authentication and a simple Notes app.
