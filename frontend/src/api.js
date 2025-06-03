@@ -1,12 +1,18 @@
 import axios from "axios";
 import { ACCESS_TOKEN } from "./constants";
 
-// const apiUrl = "/choreo-apis/awbo/backend/rest-api-be2/v1.0";
+// Use environment variable or fallback to localhost
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : apiUrl,
+  baseURL: API_URL,
+  timeout: 10000, // 10 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
+// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(ACCESS_TOKEN);
@@ -16,6 +22,42 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for handling auth errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+
+    // If the error is 401 and we haven't already tried to refresh
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+
+      try {
+        // Try to refresh the token
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (refreshToken) {
+          const response = await axios.post(`${API_URL}/api/token/refresh/`, {
+            refresh: refreshToken,
+          });
+
+          const { access } = response.data;
+          localStorage.setItem(ACCESS_TOKEN, access);
+
+          // Retry the original request
+          original.headers.Authorization = `Bearer ${access}`;
+          return api(original);
+        }
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        localStorage.clear();
+        window.location.href = "/login";
+      }
+    }
+
     return Promise.reject(error);
   }
 );

@@ -1,10 +1,27 @@
-asgiref                           # Asynchronous server gateway interface reference
-Django                            # The web framework for perfectionists with deadlines
-django-cors-headers               # CORS support for Django
-djangorestframework               # Web API framework for Django
-djangorestframework-simplejwt     # Simple JWT authentication for Django REST Framework
-PyJWT                             # JSON Web Token implementation in Python
-pytz                              # World timezone definitions, modern and historical
-sqlparse                          # SQL parser for Python
-psycopg2-binary                   # PostgreSQL adapter for Python
-python-dotenv                     # Read key-value pairs from .env files
+# Core Django packages
+asgiref
+Django
+django-cors-headers
+djangorestframework
+djangorestframework-simplejwt
+PyJWT
+pytz
+sqlparse
+python-dotenv
+
+# Database
+psycopg2-binary
+
+# Anthropic API
+anthropic
+
+# Optional: MongoDB support (uncomment when ready to switch)
+# djongo
+# pymongo
+
+# Development tools
+python-decouple
+gunicorn
+
+# Logging and monitoring
+sentry-sdk
