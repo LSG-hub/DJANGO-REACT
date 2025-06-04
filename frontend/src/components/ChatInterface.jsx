@@ -3,6 +3,7 @@ import { Send, Bot, User, Plus, MessageSquare, LogOut, Settings } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Welcome from './Welcome';
+import Message from './Message';
 import '../styles/ChatInterface.css';
 
 const ChatInterface = () => {
@@ -13,6 +14,7 @@ const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const navigate = useNavigate();
@@ -21,6 +23,13 @@ const ChatInterface = () => {
   useEffect(() => {
     loadChats();
   }, []);
+
+  // Auto-create a new chat if no chats exist after initial load
+  useEffect(() => {
+    if (initialLoadComplete && chats.length === 0 && !currentChat) {
+      createNewChat();
+    }
+  }, [initialLoadComplete, chats.length, currentChat]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -37,12 +46,23 @@ const ChatInterface = () => {
       console.log('Loading chats...');
       const response = await api.get('/api/chats/');
       console.log('Chats loaded:', response.data);
-      // Ensure we always set an array
-      setChats(Array.isArray(response.data) ? response.data : []);
+      
+      const loadedChats = Array.isArray(response.data) ? response.data : [];
+      setChats(loadedChats);
+      
+      // If there are existing chats, select the most recent one
+      if (loadedChats.length > 0) {
+        const mostRecentChat = loadedChats[0]; // Assuming they're sorted by updated_at
+        setCurrentChat(mostRecentChat);
+        loadMessages(mostRecentChat.id);
+      }
+      
+      setInitialLoadComplete(true);
     } catch (err) {
       console.error('Error loading chats:', err);
       setError('Failed to load chats');
-      setChats([]); // Ensure chats is always an array
+      setChats([]);
+      setInitialLoadComplete(true);
     }
   };
 
@@ -92,7 +112,17 @@ const ChatInterface = () => {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentChat) return;
+    if (!inputMessage.trim()) return;
+    
+    // If no current chat, create one first
+    if (!currentChat) {
+      await createNewChat();
+      // Wait a bit for state to update
+      setTimeout(() => {
+        sendMessage();
+      }, 100);
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -125,7 +155,7 @@ const ChatInterface = () => {
 
       setMessages(prev => [...prev, aiMessage]);
       
-      // Reload chats to update the sidebar
+      // Reload chats to update the sidebar with new title
       loadChats();
       
     } catch (err) {
@@ -134,6 +164,8 @@ const ChatInterface = () => {
       
       // Remove the user message if sending failed
       setMessages(prev => prev.slice(0, -1));
+      // Restore the input message
+      setInputMessage(inputMessage);
     } finally {
       setIsLoading(false);
     }
@@ -159,6 +191,36 @@ const ChatInterface = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  const handleSampleQuestionClick = async (question) => {
+    // Set the input message first
+    setInputMessage(question);
+    
+    // If no current chat, create one and send immediately
+    if (!currentChat) {
+      try {
+        const response = await api.post('/api/chats/', {
+          title: question.length > 50 ? question.substring(0, 50) + '...' : question
+        });
+        
+        const newChat = response.data;
+        setChats(prevChats => [newChat, ...prevChats]);
+        setCurrentChat(newChat);
+        setMessages([]);
+        
+        // Send the message immediately after chat creation
+        setTimeout(() => {
+          sendMessage();
+        }, 100);
+      } catch (err) {
+        console.error('Error creating chat:', err);
+        setError('Failed to create new chat');
+      }
+    } else {
+      // If there's already a chat, just send the message
+      sendMessage();
     }
   };
 
@@ -197,7 +259,7 @@ const ChatInterface = () => {
               color: '#666',
               fontSize: '14px'
             }}>
-              {error ? `Error: ${error}` : 'No chats yet. Start a new conversation!'}
+              {error ? `Error: ${error}` : 'No chats yet. Start typing below!'}
             </div>
           )}
         </div>
@@ -214,7 +276,7 @@ const ChatInterface = () => {
       <div className="chat-main">
         {/* Header */}
         <div className="chat-header">
-          <h2>{currentChat ? currentChat.title : 'Select a chat or start a new one'}</h2>
+          <h2>{currentChat ? currentChat.title : 'New Conversation'}</h2>
         </div>
 
         {/* Messages */}
@@ -234,32 +296,14 @@ const ChatInterface = () => {
           )}
           
           {messages.length === 0 ? (
-            <Welcome />
+            <Welcome onSampleQuestionClick={handleSampleQuestionClick} />
           ) : (
             messages.map((message) => (
-              <div
-                key={message.id}
-                className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}
-              >
-                <div className="message-avatar">
-                  {message.role === 'user' ? (
-                    <User size={20} />
-                  ) : (
-                    <Bot size={20} />
-                  )}
-                </div>
-                <div className="message-content">
-                  <div className="message-text">
-                    {message.content}
-                    {message.isStreaming && (
-                      <span className="streaming-cursor">|</span>
-                    )}
-                  </div>
-                  <div className="message-timestamp">
-                    {formatTimestamp(message.timestamp)}
-                  </div>
-                </div>
-              </div>
+              <Message 
+                key={message.id} 
+                message={message} 
+                formatTimestamp={formatTimestamp}
+              />
             ))
           )}
           <div ref={messagesEndRef} />

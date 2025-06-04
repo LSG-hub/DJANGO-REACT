@@ -2,11 +2,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   padding: 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: transparent;
 }
-
 .welcome-content {
   max-width: 800px;
   width: 100%;

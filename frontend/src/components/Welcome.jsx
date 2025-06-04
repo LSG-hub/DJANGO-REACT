@@ -2,7 +2,7 @@ import React from 'react';
 import { Bot, MessageCircle, Zap, Shield } from 'lucide-react';
 import '../styles/Welcome.css';
 
-const Welcome = () => {
+const Welcome = ({ onSampleQuestionClick }) => {
   const features = [
     {
       icon: <MessageCircle size={24} />,
@@ -61,7 +61,11 @@ const Welcome = () => {
           <h3 className="questions-title">Try asking something like:</h3>
           <div className="questions-grid">
             {sampleQuestions.map((question, index) => (
-              <div key={index} className="question-card">
+              <div 
+                key={index} 
+                className="question-card"
+                onClick={() => onSampleQuestionClick && onSampleQuestionClick(question)}
+              >
                 "{question}"
               </div>
             ))}

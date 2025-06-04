@@ -45,7 +45,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
         return Message.objects.filter(
             chat__id=chat_id,
             chat__user=self.request.user
-        ).order_by('created_at')
+        ).order_by('timestamp')  # Changed from 'created_at' to 'timestamp'
 
 
 class SendMessageView(APIView):
